@@ -506,13 +506,16 @@
     const W = 960;
     const H = 520;
     const groundY = 405;
-    const gravity = 2300;
-    const jumpPower = 850;
+    const gravity = 1800;
+    const jumpPower = 720;
     const bestKey = "krosh-carrot-runner-best";
-    const startSpeed = 288;
-    const speedRamp = 3.2;
-    const maxSpeed = 390;
-    const groundVisualSpeed = 0.58;
+    const firstPhaseSpeed = 200;
+    const baseWorldSpeed = 220;
+    const maxWorldSpeed = 280;
+    const groundVisualSpeed = 0.72;
+    const jumpCooldownMs = 150;
+    const rockMinDistance = 380;
+    const rockMaxDistance = 620;
     const view = {
       dpr: 1,
       scale: 1,
@@ -539,7 +542,8 @@
     const state = {
       running: false,
       lastTime: 0,
-      speed: startSpeed,
+      elapsed: 0,
+      speed: firstPhaseSpeed,
       distance: 0,
       score: 0,
       lives: 3,
@@ -549,6 +553,7 @@
       carrots: [],
       rocks: [],
       grassOffset: 0,
+      lastRockSpawnX: -Infinity,
       clouds: [
         { x: 80, y: 76, s: 1.05 },
         { x: 410, y: 118, s: 0.78 },
@@ -589,14 +594,16 @@
     function resetGame() {
       state.running = true;
       state.lastTime = performance.now();
-      state.speed = startSpeed;
+      state.elapsed = 0;
+      state.speed = firstPhaseSpeed;
       state.distance = 0;
       state.score = 0;
       state.lives = 3;
-      state.carrotTimer = 0.75;
-      state.rockTimer = 2.15;
+      state.carrotTimer = randomBetween(1.2, 2.0);
+      state.rockTimer = randomBetween(2.3, 3.0);
       state.carrots = [];
       state.rocks = [];
+      state.lastRockSpawnX = -Infinity;
       krosh.y = groundY - krosh.r;
       krosh.vy = 0;
       krosh.onGround = true;
@@ -633,7 +640,7 @@
       }
 
       const now = performance.now();
-      if (now - lastTouchAction < 120) return;
+      if (now - lastTouchAction < jumpCooldownMs) return;
       lastTouchAction = now;
       action();
     }
@@ -657,26 +664,84 @@
       overlay.classList.add("show");
     }
 
+    function randomBetween(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function currentWorldSpeed(elapsed) {
+      if (elapsed < 10) return firstPhaseSpeed;
+      if (elapsed < 30) return baseWorldSpeed;
+
+      const ramp = Math.min(1, (elapsed - 30) / 35);
+      return baseWorldSpeed + (maxWorldSpeed - baseWorldSpeed) * ramp;
+    }
+
+    function currentRockDelay() {
+      if (state.elapsed < 10) return randomBetween(2.3, 3.0);
+      if (state.elapsed < 30) return randomBetween(1.8, 2.6);
+      return randomBetween(1.4, 2.2);
+    }
+
+    function carrotHeightAboveGround() {
+      const roll = Math.random();
+      if (roll < 0.5) return 40;
+      if (roll < 0.85) return 90;
+      return 130;
+    }
+
+    function hasRockNearSpawnX(x) {
+      return state.rocks.some((rock) => Math.abs(rock.x - x) < 150);
+    }
+
+    function canSpawnRock() {
+      const lastRock = state.rocks[state.rocks.length - 1];
+      if (!lastRock) return true;
+
+      const distanceFromPrevious = W + 52 - lastRock.x;
+      return distanceFromPrevious >= rockMinDistance;
+    }
+
     function spawnCarrot() {
-      const y = 220 + Math.random() * 85;
+      const x = W + 42;
+      if (hasRockNearSpawnX(x)) {
+        state.carrotTimer = 0.35;
+        return false;
+      }
+
+      const y = groundY - carrotHeightAboveGround() - 56;
       state.carrots.push({
-        x: W + 42,
+        x,
         y,
         w: 34,
         h: 56,
         spin: Math.random() * Math.PI * 2,
         collected: false
       });
+      return true;
     }
 
     function spawnRock() {
+      if (!canSpawnRock()) {
+        state.rockTimer = 0.25;
+        return false;
+      }
+
+      const width = 58 + Math.random() * 18;
+      const height = 32 + Math.random() * 14;
+      const x = W + 52;
       state.rocks.push({
-        x: W + 52,
+        x,
         y: groundY - 18,
-        w: 58 + Math.random() * 18,
-        h: 32 + Math.random() * 14,
+        w: width,
+        h: height,
+        hitX: x + width * 0.1,
+        hitY: groundY - 18 + height * 0.14,
+        hitW: width * 0.8,
+        hitH: height * 0.72,
         hit: false
       });
+      state.lastRockSpawnX = x;
+      return true;
     }
 
     function hitCircleRect(cx, cy, cr, rect) {
@@ -688,8 +753,9 @@
     }
 
     function update(dt) {
+      state.elapsed += dt;
+      state.speed = currentWorldSpeed(state.elapsed);
       state.distance += state.speed * dt;
-      state.speed = Math.min(maxSpeed, state.speed + dt * speedRamp);
       state.grassOffset = (state.grassOffset + state.speed * groundVisualSpeed * dt) % 44;
 
       krosh.vy += gravity * dt;
@@ -707,14 +773,15 @@
       state.rockTimer -= dt;
 
       if (state.carrotTimer <= 0) {
-        spawnCarrot();
-        state.carrotTimer = 0.85 + Math.random() * 1.0;
+        if (spawnCarrot()) {
+          state.carrotTimer = randomBetween(1.2, 2.0);
+        }
       }
 
       if (state.rockTimer <= 0) {
-        spawnRock();
-        const earlyGameBonus = state.distance < 1600 ? 0.8 : 0;
-        state.rockTimer = 1.45 + earlyGameBonus + Math.random() * 1.25;
+        if (spawnRock()) {
+          state.rockTimer = currentRockDelay();
+        }
       }
 
       for (const cloud of state.clouds) {
@@ -734,7 +801,14 @@
 
       for (const rock of state.rocks) {
         rock.x -= state.speed * dt;
-        if (!rock.hit && krosh.invincible <= 0 && hitCircleRect(krosh.x, krosh.y + 4, krosh.r * 0.76, rock)) {
+        rock.hitX = rock.x + rock.w * 0.1;
+        rock.hitY = rock.y + rock.h * 0.14;
+        if (!rock.hit && krosh.invincible <= 0 && hitCircleRect(krosh.x, krosh.y + 4, krosh.r * 0.7, {
+          x: rock.hitX,
+          y: rock.hitY,
+          w: rock.hitW,
+          h: rock.hitH
+        })) {
           rock.hit = true;
           state.lives -= 1;
           krosh.invincible = 1.05;
