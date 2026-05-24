@@ -341,7 +341,7 @@
       }
     }
 
-    @media (hover: none) and (orientation: portrait) and (max-width: 767px) {
+    @media (orientation: portrait) and (max-width: 900px) {
       .shell {
         visibility: hidden;
       }
@@ -510,8 +510,9 @@
     const jumpPower = 850;
     const bestKey = "krosh-carrot-runner-best";
     const startSpeed = 288;
-    const speedRamp = 4.2;
-    const maxSpeed = 430;
+    const speedRamp = 3.2;
+    const maxSpeed = 390;
+    const groundVisualSpeed = 0.58;
     const view = {
       dpr: 1,
       scale: 1,
@@ -689,7 +690,7 @@
     function update(dt) {
       state.distance += state.speed * dt;
       state.speed = Math.min(maxSpeed, state.speed + dt * speedRamp);
-      state.grassOffset = (state.grassOffset + state.speed * dt) % 44;
+      state.grassOffset = (state.grassOffset + state.speed * groundVisualSpeed * dt) % 44;
 
       krosh.vy += gravity * dt;
       krosh.y += krosh.vy * dt;
