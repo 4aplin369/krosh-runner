@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Крош: морковный забег</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --sky: #8fd7ff;
+      --sky-deep: #53afe9;
+      --grass: #5acb45;
+      --grass-dark: #23923a;
+      --ink: #153447;
+      --panel: rgba(255, 255, 255, 0.82);
+      --line: rgba(21, 52, 71, 0.18);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: linear-gradient(#b8ecff 0%, #f7fdff 58%, #77d457 58%, #2aa244 100%);
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .shell {
+      position: relative;
+      width: min(100vw, 1040px);
+      height: min(100vh, 680px);
+      height: min(100dvh, 680px);
+      min-height: 520px;
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+    }
+
+    .topbar,
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 12px 28px rgba(21, 52, 71, 0.13);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 4vw, 34px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      white-space: nowrap;
+    }
+
+    .pill {
+      min-width: 98px;
+      padding: 7px 9px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      text-align: center;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 0;
+      border: 1px solid rgba(21, 52, 71, 0.2);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 18px 45px rgba(21, 52, 71, 0.2);
+      background: var(--sky);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(12, 53, 79, 0.18);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+      touch-action: manipulation;
+    }
+
+    .overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      width: min(420px, 92vw);
+      padding: 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(21, 52, 71, 0.18);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 20px 50px rgba(21, 52, 71, 0.24);
+      text-align: center;
+    }
+
+    .modal h2 {
+      margin: 0 0 7px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    .modal p {
+      margin: 0 0 14px;
+      color: #416173;
+      line-height: 1.45;
+    }
+
+    .controls {
+      justify-content: center;
+    }
+
+    .jump,
+    .restart {
+      height: 48px;
+      min-width: 142px;
+      border: 0;
+      border-radius: 8px;
+      background: #ff8b2c;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      touch-action: manipulation;
+      user-select: none;
+      box-shadow: 0 7px 0 #c65a16, 0 12px 24px rgba(198, 90, 22, 0.24);
+    }
+
+    .jump:active,
+    .restart:active {
+      transform: translateY(3px);
+      box-shadow: 0 4px 0 #c65a16, 0 8px 18px rgba(198, 90, 22, 0.2);
+    }
+
+    .restart {
+      background: #168cd3;
+      box-shadow: 0 7px 0 #0d5d94, 0 12px 24px rgba(13, 93, 148, 0.23);
+    }
+
+    .restart:active {
+      box-shadow: 0 4px 0 #0d5d94, 0 8px 18px rgba(13, 93, 148, 0.2);
+    }
+
+    .hint {
+      color: #35586b;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .rotate-lock {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(#9fe5ff 0%, #f8fdff 56%, #67cb4b 56%, #249a3f 100%);
+      text-align: center;
+    }
+
+    .rotate-card {
+      width: min(330px, 88vw);
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 18px 40px rgba(21, 52, 71, 0.2);
+    }
+
+    .phone-icon {
+      width: 54px;
+      height: 86px;
+      margin: 0 auto 14px;
+      border: 5px solid #168cd3;
+      border-radius: 12px;
+      position: relative;
+      transform: rotate(90deg);
+    }
+
+    .phone-icon::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 5px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #168cd3;
+      transform: translateX(-50%);
+    }
+
+    .rotate-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 24px;
+    }
+
+    .rotate-card span {
+      color: #416173;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 620px) {
+      body {
+        overflow: hidden;
+      }
+
+      .shell {
+        width: 100vw;
+        min-height: 100dvh;
+        height: 100dvh;
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+        grid-template-rows: auto minmax(0, 1fr) auto;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        padding: 8px;
+        gap: 8px;
+      }
+
+      h1 {
+        max-width: 42vw;
+        font-size: clamp(19px, 5vw, 24px);
+        line-height: 1.05;
+      }
+
+      .stats {
+        font-size: 13px;
+        gap: 5px;
+      }
+
+      .pill {
+        min-width: 70px;
+        padding: 6px 7px;
+      }
+
+      .stage {
+        border-radius: 8px;
+        min-height: 320px;
+      }
+
+      .controls {
+        position: sticky;
+        bottom: env(safe-area-inset-bottom);
+        padding: 8px;
+      }
+
+      .jump {
+        width: 100%;
+        height: 62px;
+        min-width: 0;
+        font-size: 22px;
+      }
+
+      .modal {
+        padding: 16px;
+      }
+
+      .restart {
+        width: 100%;
+        height: 56px;
+        font-size: 20px;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .topbar {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        max-width: none;
+      }
+
+      .stats {
+        justify-content: stretch;
+      }
+
+      .pill {
+        flex: 1;
+      }
+    }
+
+    @media (hover: none) and (orientation: portrait) and (max-width: 767px) {
+      .shell {
+        visibility: hidden;
+      }
+
+      .rotate-lock {
+        display: flex;
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 700px) {
+      body {
+        display: block;
+      }
+
+      .shell {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        padding:
+          calc(6px + env(safe-area-inset-top))
+          calc(8px + env(safe-area-inset-right))
+          calc(6px + env(safe-area-inset-bottom))
+          calc(8px + env(safe-area-inset-left));
+        display: block;
+      }
+
+      .topbar {
+        position: absolute;
+        left: calc(8px + env(safe-area-inset-left));
+        right: calc(8px + env(safe-area-inset-right));
+        top: calc(6px + env(safe-area-inset-top));
+        z-index: 6;
+        min-height: 40px;
+        padding: 6px 8px;
+        border-radius: 8px;
+      }
+
+      h1 {
+        font-size: 18px;
+      }
+
+      .stats {
+        gap: 5px;
+        font-size: 12px;
+      }
+
+      .pill {
+        min-width: 68px;
+        padding: 5px 6px;
+      }
+
+      .stage {
+        position: absolute;
+        inset:
+          calc(54px + env(safe-area-inset-top))
+          calc(8px + env(safe-area-inset-right))
+          calc(6px + env(safe-area-inset-bottom))
+          calc(8px + env(safe-area-inset-left));
+        width: auto;
+        height: auto;
+        min-height: 0;
+        border-radius: 8px;
+      }
+
+      .controls {
+        position: fixed;
+        right: calc(12px + env(safe-area-inset-right));
+        bottom: calc(12px + env(safe-area-inset-bottom));
+        z-index: 8;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+
+      .jump {
+        width: 116px;
+        height: 72px;
+        min-width: 0;
+        border-radius: 8px;
+        font-size: 19px;
+        opacity: 0.92;
+      }
+
+      .modal {
+        width: min(360px, 72vw);
+        padding: 14px;
+      }
+
+      .modal h2 {
+        font-size: 24px;
+      }
+
+      .modal p {
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+
+      .restart {
+        height: 50px;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <h1>Крош: морковный забег</h1>
+      <div class="stats" aria-live="polite">
+        <div class="pill">Счёт: <span id="score">0</span></div>
+        <div class="pill">Лучший: <span id="best">0</span></div>
+        <div class="pill">Жизни: <span id="lives">3</span></div>
+      </div>
+    </header>
+
+    <section class="stage" aria-label="Игровое поле">
+      <canvas id="game" width="960" height="520"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="modal">
+          <h2 id="overlayTitle">Прыг-скок!</h2>
+          <p id="overlayText">Лови морковки в воздухе и перепрыгивай камушки на траве.</p>
+          <button class="restart" id="startButton" type="button">Старт</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="controls">
+      <button class="jump" id="jumpButton" type="button">Прыжок</button>
+      <span class="hint">Пробел, стрелка вверх, клик или касание тоже работают</span>
+    </footer>
+  </main>
+
+  <div class="rotate-lock" aria-hidden="true">
+    <div class="rotate-card">
+      <div class="phone-icon"></div>
+      <strong>Поверни телефон</strong>
+      <span>В горизонтальном режиме Крошу хватает места для разбега и прыжков.</span>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.querySelector("#game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.querySelector("#score");
+    const bestEl = document.querySelector("#best");
+    const livesEl = document.querySelector("#lives");
+    const overlay = document.querySelector("#overlay");
+    const overlayTitle = document.querySelector("#overlayTitle");
+    const overlayText = document.querySelector("#overlayText");
+    const startButton = document.querySelector("#startButton");
+    const jumpButton = document.querySelector("#jumpButton");
+
+    const W = 960;
+    const H = 520;
+    const groundY = 405;
+    const gravity = 2300;
+    const jumpPower = 850;
+    const bestKey = "krosh-carrot-runner-best";
+    const startSpeed = 288;
+    const speedRamp = 4.2;
+    const maxSpeed = 430;
+
+    function readBestScore() {
+      try {
+        return Number(window.localStorage.getItem(bestKey) || 0);
+      } catch (error) {
+        return 0;
+      }
+    }
+
+    function saveBestScore(value) {
+      try {
+        window.localStorage.setItem(bestKey, String(value));
+      } catch (error) {
+        // Some mobile browsers block storage for local files. The game should still run.
+      }
+    }
+
+    const state = {
+      running: false,
+      lastTime: 0,
+      speed: startSpeed,
+      distance: 0,
+      score: 0,
+      lives: 3,
+      best: readBestScore(),
+      carrotTimer: 0,
+      rockTimer: 0,
+      carrots: [],
+      rocks: [],
+      grassOffset: 0,
+      clouds: [
+        { x: 80, y: 76, s: 1.05 },
+        { x: 410, y: 118, s: 0.78 },
+        { x: 720, y: 70, s: 0.92 }
+      ]
+    };
+
+    const krosh = {
+      x: 172,
+      y: groundY - 58,
+      r: 38,
+      vy: 0,
+      onGround: true,
+      invincible: 0,
+      blink: 0
+    };
+
+    bestEl.textContent = state.best;
+
+    function resetGame() {
+      state.running = true;
+      state.lastTime = performance.now();
+      state.speed = startSpeed;
+      state.distance = 0;
+      state.score = 0;
+      state.lives = 3;
+      state.carrotTimer = 0.75;
+      state.rockTimer = 2.15;
+      state.carrots = [];
+      state.rocks = [];
+      krosh.y = groundY - krosh.r;
+      krosh.vy = 0;
+      krosh.onGround = true;
+      krosh.invincible = 0;
+      overlay.classList.remove("show");
+      updateHud();
+      requestAnimationFrame(loop);
+    }
+
+    function updateHud() {
+      scoreEl.textContent = state.score;
+      bestEl.textContent = state.best;
+      livesEl.textContent = state.lives;
+    }
+
+    let lastTouchAction = -Infinity;
+
+    function jump() {
+      if (!state.running) {
+        resetGame();
+        return;
+      }
+
+      if (krosh.onGround) {
+        krosh.vy = -jumpPower;
+        krosh.onGround = false;
+      }
+    }
+
+    function runTouchAction(action, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      const now = performance.now();
+      if (now - lastTouchAction < 120) return;
+      lastTouchAction = now;
+      action();
+    }
+
+    function endGame() {
+      state.running = false;
+      if (state.score > state.best) {
+        state.best = state.score;
+        saveBestScore(state.best);
+      }
+      updateHud();
+      overlayTitle.textContent = "Забег окончен";
+      overlayText.textContent = `Крош собрал ${state.score} морковок. Ещё круг?`;
+      startButton.textContent = "Играть снова";
+      overlay.classList.add("show");
+    }
+
+    function spawnCarrot() {
+      const y = 165 + Math.random() * 135;
+      state.carrots.push({
+        x: W + 42,
+        y,
+        w: 34,
+        h: 56,
+        spin: Math.random() * Math.PI * 2,
+        collected: false
+      });
+    }
+
+    function spawnRock() {
+      state.rocks.push({
+        x: W + 52,
+        y: groundY - 18,
+        w: 58 + Math.random() * 18,
+        h: 32 + Math.random() * 14,
+        hit: false
+      });
+    }
+
+    function hitCircleRect(cx, cy, cr, rect) {
+      const nearestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
+      const nearestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
+      const dx = cx - nearestX;
+      const dy = cy - nearestY;
+      return dx * dx + dy * dy < cr * cr;
+    }
+
+    function update(dt) {
+      state.distance += state.speed * dt;
+      state.speed = Math.min(maxSpeed, state.speed + dt * speedRamp);
+      state.grassOffset = (state.grassOffset + state.speed * dt) % 44;
+
+      krosh.vy += gravity * dt;
+      krosh.y += krosh.vy * dt;
+      if (krosh.y >= groundY - krosh.r) {
+        krosh.y = groundY - krosh.r;
+        krosh.vy = 0;
+        krosh.onGround = true;
+      }
+
+      krosh.invincible = Math.max(0, krosh.invincible - dt);
+      krosh.blink += dt * 16;
+
+      state.carrotTimer -= dt;
+      state.rockTimer -= dt;
+
+      if (state.carrotTimer <= 0) {
+        spawnCarrot();
+        state.carrotTimer = 0.85 + Math.random() * 1.0;
+      }
+
+      if (state.rockTimer <= 0) {
+        spawnRock();
+        const earlyGameBonus = state.distance < 1600 ? 0.8 : 0;
+        state.rockTimer = 1.45 + earlyGameBonus + Math.random() * 1.25;
+      }
+
+      for (const cloud of state.clouds) {
+        cloud.x -= dt * (20 + cloud.s * 12);
+        if (cloud.x < -180) cloud.x = W + 150 + Math.random() * 120;
+      }
+
+      for (const carrot of state.carrots) {
+        carrot.x -= state.speed * dt;
+        carrot.spin += dt * 4;
+        if (!carrot.collected && hitCircleRect(krosh.x, krosh.y, krosh.r * 0.78, carrot)) {
+          carrot.collected = true;
+          state.score += 1;
+          updateHud();
+        }
+      }
+
+      for (const rock of state.rocks) {
+        rock.x -= state.speed * dt;
+        if (!rock.hit && krosh.invincible <= 0 && hitCircleRect(krosh.x, krosh.y + 4, krosh.r * 0.76, rock)) {
+          rock.hit = true;
+          state.lives -= 1;
+          krosh.invincible = 1.05;
+          updateHud();
+          if (state.lives <= 0) endGame();
+        }
+      }
+
+      state.carrots = state.carrots.filter((carrot) => carrot.x > -90 && !carrot.collected);
+      state.rocks = state.rocks.filter((rock) => rock.x > -100);
+    }
+
+    function drawCloud(x, y, s) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(s, s);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+      ctx.beginPath();
+      ctx.arc(0, 14, 28, 0, Math.PI * 2);
+      ctx.arc(32, 0, 35, 0, Math.PI * 2);
+      ctx.arc(72, 16, 30, 0, Math.PI * 2);
+      ctx.arc(38, 24, 38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawSky() {
+      const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+      sky.addColorStop(0, "#7fd7ff");
+      sky.addColorStop(1, "#d9f7ff");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "#ffd948";
+      ctx.beginPath();
+      ctx.arc(W - 104, 74, 43, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 189, 45, 0.72)";
+      ctx.lineWidth = 7;
+      for (let i = 0; i < 12; i += 1) {
+        const a = (Math.PI * 2 * i) / 12;
+        ctx.beginPath();
+        ctx.moveTo(W - 104 + Math.cos(a) * 55, 74 + Math.sin(a) * 55);
+        ctx.lineTo(W - 104 + Math.cos(a) * 72, 74 + Math.sin(a) * 72);
+        ctx.stroke();
+      }
+
+      for (const cloud of state.clouds) drawCloud(cloud.x, cloud.y, cloud.s);
+    }
+
+    function drawGround() {
+      ctx.fillStyle = "#70d24b";
+      ctx.fillRect(0, groundY, W, H - groundY);
+      ctx.fillStyle = "#35a83d";
+      ctx.fillRect(0, groundY + 62, W, H - groundY - 62);
+
+      ctx.strokeStyle = "#2b9a39";
+      ctx.lineWidth = 4;
+      for (let x = -44 + state.grassOffset; x < W + 44; x += 44) {
+        ctx.beginPath();
+        ctx.moveTo(x, groundY + 5);
+        ctx.lineTo(x + 12, groundY - 16);
+        ctx.lineTo(x + 25, groundY + 5);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(43, 125, 48, 0.14)";
+      for (let x = -80 + (state.grassOffset * 0.55); x < W + 80; x += 110) {
+        ctx.beginPath();
+        ctx.ellipse(x, groundY + 82, 46, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawCarrot(carrot) {
+      ctx.save();
+      ctx.translate(carrot.x + carrot.w / 2, carrot.y + carrot.h / 2);
+      ctx.rotate(Math.sin(carrot.spin) * 0.18);
+
+      ctx.fillStyle = "#2fb44a";
+      ctx.beginPath();
+      ctx.ellipse(-6, -29, 7, 20, -0.62, 0, Math.PI * 2);
+      ctx.ellipse(6, -31, 7, 22, 0.48, 0, Math.PI * 2);
+      ctx.ellipse(0, -34, 6, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#ff8c25";
+      ctx.beginPath();
+      ctx.moveTo(-17, -18);
+      ctx.quadraticCurveTo(0, -27, 18, -17);
+      ctx.quadraticCurveTo(11, 16, 0, 28);
+      ctx.quadraticCurveTo(-12, 15, -17, -18);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(166, 74, 18, 0.45)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-9, -4);
+      ctx.lineTo(8, -7);
+      ctx.moveTo(-7, 8);
+      ctx.lineTo(6, 5);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawRock(rock) {
+      ctx.save();
+      ctx.translate(rock.x, rock.y);
+      ctx.fillStyle = "#777b80";
+      ctx.beginPath();
+      ctx.moveTo(4, rock.h);
+      ctx.quadraticCurveTo(2, rock.h * 0.4, rock.w * 0.28, rock.h * 0.24);
+      ctx.quadraticCurveTo(rock.w * 0.54, -8, rock.w * 0.8, rock.h * 0.16);
+      ctx.quadraticCurveTo(rock.w + 8, rock.h * 0.44, rock.w - 2, rock.h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
+      ctx.beginPath();
+      ctx.ellipse(rock.w * 0.36, rock.h * 0.35, 13, 6, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawKrosh() {
+      const flash = krosh.invincible > 0 && Math.floor(krosh.blink) % 2 === 0;
+      if (flash) return;
+
+      ctx.save();
+      ctx.translate(krosh.x, krosh.y);
+      const squash = krosh.onGround ? 1 + Math.sin(state.distance * 0.04) * 0.025 : 1;
+      ctx.scale(1, squash);
+
+      ctx.fillStyle = "rgba(21, 52, 71, 0.18)";
+      ctx.beginPath();
+      ctx.ellipse(0, krosh.r + 20, 42, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#37bff2";
+      ctx.strokeStyle = "#137ea8";
+      ctx.lineWidth = 4;
+
+      ctx.save();
+      ctx.rotate(-0.4);
+      ctx.beginPath();
+      ctx.ellipse(-20, -54, 12, 42, -0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.rotate(0.38);
+      ctx.beginPath();
+      ctx.ellipse(22, -55, 12, 43, 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, krosh.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.ellipse(-13, -8, 10, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(13, -8, 10, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#153447";
+      ctx.beginPath();
+      ctx.arc(-9, -7, 4, 0, Math.PI * 2);
+      ctx.arc(9, -7, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#f24b7a";
+      ctx.beginPath();
+      ctx.arc(0, 5, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#153447";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 12, 13, 0.15, Math.PI - 0.15);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#137ea8";
+      ctx.lineWidth = 5;
+      const legKick = Math.sin(state.distance * 0.05) * 8;
+      ctx.beginPath();
+      ctx.moveTo(-18, 32);
+      ctx.lineTo(-36, 47 + legKick);
+      ctx.moveTo(18, 32);
+      ctx.lineTo(36, 47 - legKick);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function draw() {
+      drawSky();
+      drawGround();
+
+      for (const carrot of state.carrots) drawCarrot(carrot);
+      for (const rock of state.rocks) drawRock(rock);
+      drawKrosh();
+    }
+
+    function loop(now) {
+      if (!state.running) {
+        draw();
+        return;
+      }
+
+      const dt = Math.min(0.032, (now - state.lastTime) / 1000);
+      state.lastTime = now;
+      update(dt);
+      draw();
+
+      if (state.running) requestAnimationFrame(loop);
+    }
+
+    function handleKey(event) {
+      if (event.code === "Space" || event.code === "ArrowUp" || event.code === "KeyW") {
+        event.preventDefault();
+        jump();
+      }
+    }
+
+    function actionFromTarget(target) {
+      if (!target || typeof target.closest !== "function") return null;
+      const control = target.closest("#startButton, #jumpButton, #game, #overlay");
+      if (!control) return null;
+      if (control.id === "startButton") return resetGame;
+      if (control.id === "jumpButton" || control.id === "game") return jump;
+      if (control.id === "overlay" && overlay.classList.contains("show")) return resetGame;
+      return null;
+    }
+
+    function handlePress(event) {
+      if (state.running) {
+        runTouchAction(jump, event);
+        return;
+      }
+
+      if (overlay.classList.contains("show")) {
+        runTouchAction(resetGame, event);
+        return;
+      }
+
+      const action = actionFromTarget(event.target);
+      if (action) runTouchAction(action, event);
+    }
+
+    document.addEventListener("pointerup", handlePress, { passive: false });
+    document.addEventListener("touchend", handlePress, { passive: false });
+    document.addEventListener("click", handlePress);
+    window.addEventListener("keydown", handleKey);
+
+    resetGame();
+  </script>
+</body>
+</html>
