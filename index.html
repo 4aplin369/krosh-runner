@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#8fd7ff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Крош">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
   <title>Крош: морковный забег</title>
   <style>
     :root {
@@ -631,6 +637,12 @@
       action();
     }
 
+    function tryFullscreen() {
+      const root = document.documentElement;
+      if (document.fullscreenElement || !root.requestFullscreen) return;
+      root.requestFullscreen().catch(() => {});
+    }
+
     function endGame() {
       state.running = false;
       if (state.score > state.best) {
@@ -645,7 +657,7 @@
     }
 
     function spawnCarrot() {
-      const y = 165 + Math.random() * 135;
+      const y = 220 + Math.random() * 85;
       state.carrots.push({
         x: W + 42,
         y,
@@ -968,6 +980,8 @@
     }
 
     function handlePress(event) {
+      tryFullscreen();
+
       if (state.running) {
         runTouchAction(jump, event);
         return;

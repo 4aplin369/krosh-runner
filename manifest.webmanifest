@@ -1,0 +1,11 @@
+{
+  "name": "Крош: морковный забег",
+  "short_name": "Крош",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#8fd7ff",
+  "theme_color": "#8fd7ff",
+  "description": "Мобильный раннер с Крошем, морковками и камушками."
+}
